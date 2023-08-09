@@ -7,13 +7,28 @@ import matplotlib.animation as animation
 import aubio
 import json
 import time
-from Test import *
+from ToneGenerator import *
 
 # Parameters for audio recording
 FORMAT = pyaudio.paFloat32
 CHANNELS = 1
 RATE = 44100
 CHUNK = 1024
+
+# Initialize data for the rolling average
+error_window = []
+error_window_size = 10  # Adjust this window size as needed
+
+# Initialize threshold for error
+error_threshold = 10.0  # Adjust this threshold as needed
+
+# Create the tone array once outside of the animation
+duration_ms = 1000  # Duration of the tone in milliseconds
+sample_rate = 44100  # Standard audio sample rate
+
+five_second_value_conversion = 0.0046 #conversion of time to some arbitrary value. This determines the length of the signal.
+
+amplitude_threshold = 0.00001  # Adjust this threshold as needed
 
 # Initialize PyAudio
 p = pyaudio.PyAudio()
@@ -34,7 +49,7 @@ pitch_o.set_silence(-40)
 fig, ax = plt.subplots()
 line_played, = ax.plot([], [], label='Played Tone', color='blue')
 line_sung, = ax.plot([], [], label='Sung Tone', color='red')
-ax.set_ylim(0, 1500)
+ax.set_ylim(0, 700)
 ax.set_xlim(0, 5)  # Display most recent 5 seconds
 ax.legend()
 ax.set_xlabel('Time (s)')
@@ -45,9 +60,6 @@ time_values = []
 played_tone_freqs = []
 sung_tone_freqs = []
 
-# Create the tone array once outside of the animation
-duration_ms = 1000  # Duration of the tone in milliseconds
-sample_rate = 44100  # Standard audio sample rate
 tone = generate_tone("E", 3, duration_ms, sample_rate)
 
 def init():
@@ -62,22 +74,43 @@ def animate(i):
     
     # Normalize the audio data
     data_normalized = data_np / np.max(np.abs(data_np))
-    
+   
     # Perform pitch estimation using Aubio
     pitch = pitch_o(data_normalized)[0]
     
-    if pitch <= 1500:  # Exclude values greater than 1500 Hz
-        sung_tone_freqs.append(pitch)
-        played_tone_freqs.append(tone[i % len(tone)])  # Reuse the generated tone array
-        time_values.append(i / RATE)
-        
-        # Calculate the time range for the x-axis
-        time_range = max(0, time_values[-1] - 5)  # Show most recent 5 seconds
-        ax.set_xlim(time_range, time_values[-1])
-        
-        line_sung.set_data(time_values, sung_tone_freqs)
-        line_played.set_data(time_values, played_tone_freqs)
+    # Calculate the current error
+    if sung_tone_freqs and sung_tone_freqs[-1] is not None:
+        current_error = abs(pitch - sung_tone_freqs[-1])
+    else:
+        current_error = 0.0
+
+    # Update the error window
+    error_window.append(current_error)
+    if len(error_window) > error_window_size:
+        error_window.pop(0)
     
+    # Calculate the rolling average of the error
+    rolling_average_error = np.mean(error_window)
+    
+    if np.max(np.abs(data_np)) > amplitude_threshold and rolling_average_error < error_threshold:
+        sung_tone_freqs.append(pitch)
+    else:
+        sung_tone_freqs.append(None)  # Append None for no singing
+    
+    played_tone_freqs.append(tone[i % len(tone)])  # Reuse the generated tone array
+    time_values.append(i / RATE)
+    
+    # Remove old data points that are outside the time range
+    while time_values[-1] - time_values[0] > five_second_value_conversion:
+        time_values.pop(0)
+        sung_tone_freqs.pop(0)
+        played_tone_freqs.pop(0)
+    
+    # Update x-axis limits based on the most recent time value
+    ax.set_xlim(time_values[0], time_values[-1])
+    
+    line_sung.set_data(time_values, sung_tone_freqs)
+    line_played.set_data(time_values, played_tone_freqs)
     return line_played, line_sung
 
 # Create a thread for playing the tone
