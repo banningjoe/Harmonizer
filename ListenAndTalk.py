@@ -20,7 +20,7 @@ error_window = []
 error_window_size = 10  # Adjust this window size as needed
 
 # Initialize threshold for error
-error_threshold = 10.0  # Adjust this threshold as needed
+error_threshold = 10  # Adjust this threshold as needed
 
 # Create the tone array once outside of the animation
 duration_ms = 1000  # Duration of the tone in milliseconds
@@ -49,7 +49,7 @@ pitch_o.set_silence(-40)
 fig, ax = plt.subplots()
 line_played, = ax.plot([], [], label='Played Tone', color='blue')
 line_sung, = ax.plot([], [], label='Sung Tone', color='red')
-ax.set_ylim(0, 700)
+ax.set_ylim(0, 2000)
 ax.set_xlim(0, 5)  # Display most recent 5 seconds
 ax.legend()
 ax.set_xlabel('Time (s)')
@@ -97,7 +97,11 @@ def animate(i):
     else:
         sung_tone_freqs.append(None)  # Append None for no singing
     
-    played_tone_freqs.append(tone[i % len(tone)])  # Reuse the generated tone array
+    if current_frequency is not None:
+        played_tone_freqs.append(current_frequency)  # Reuse the generated tone array
+    else:
+        played_tone_freqs.append(None)
+
     time_values.append(i / RATE)
     
     # Remove old data points that are outside the time range
@@ -108,7 +112,6 @@ def animate(i):
     
     # Update x-axis limits based on the most recent time value
     ax.set_xlim(time_values[0], time_values[-1])
-    
     line_sung.set_data(time_values, sung_tone_freqs)
     line_played.set_data(time_values, played_tone_freqs)
     return line_played, line_sung
@@ -119,7 +122,6 @@ def play_tone_thread():
     duration_ms = 1000  # Duration of the tone in milliseconds
     sample_rate = 44100  # Standard audio sample rate
 
-    tone = generate_tone("E", 3, duration_ms, sample_rate)
     play_tone((tone * 32767).astype(np.int16), sample_rate)
 
 # Create a thread for playing the song
@@ -128,7 +130,8 @@ def play_song_thread():
         note = note_info["note"]
         octave = note_info["octave"]
         duration = note_info["duration"]
-        
+        global current_frequency
+        current_frequency = calculate_note_frequency(note,octave)
         tone = generate_tone(note, octave, duration * 1000, sample_rate)
         play_tone((tone * 32767).astype(np.int16), sample_rate)
         time.sleep(duration)
