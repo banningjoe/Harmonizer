@@ -8,6 +8,7 @@ import aubio
 import json
 import time
 from ToneGenerator import *
+import math
 
 # Parameters for audio recording
 FORMAT = pyaudio.paFloat32
@@ -53,7 +54,7 @@ pitch_o.set_silence(-40)
 fig, ax = plt.subplots()
 line_played, = ax.plot([], [], label='Played Tone', color='blue')
 line_sung, = ax.plot([], [], label='Sung Tone', color='red')
-ax.set_ylim(0, 2000)
+ax.set_ylim(0, 500)
 ax.set_xlim(0, 5)  # Display most recent 5 seconds
 ax.legend()
 ax.set_xlabel('Time (s)')
@@ -68,9 +69,9 @@ def init():
     line_played.set_data([], [])
     line_sung.set_data([], [])
     return line_played, line_sung
-
 # Function to update the plot with new audio data
 def animate(i):
+    
     data = stream.read(CHUNK)
     data_np = np.frombuffer(data, dtype=np.float32)
     
@@ -118,8 +119,8 @@ def animate(i):
     line_played.set_data(time_values, played_tone_freqs)
 
     if sung_tone_freqs[-1] is not None and played_tone_freqs[-1] is not None:
-        interval, diff = calculate_interval(sung_tone_freqs[-1],played_tone_freqs[-1])
-        print(interval + ", Difference of: " + str(diff) + " hz")
+        interval, diff, octave = calculate_interval_and_octave(sung_tone_freqs[-1],played_tone_freqs[-1])
+        print(interval + ", Difference of: " + str(diff) + " hz, Octave: " + str(octave))
 
     return line_played, line_sung
 
@@ -152,6 +153,11 @@ def calculate_interval(sung_pitch, played_pitch):
         index = abs_relative_pitches.index(closest_interval)
         pitch_to_hit = played_pitch*interval_ratios_below[index]
     else:
+        #we solve for pitch_played*(2^octave) * harmonic_interval = pitch_sung
+        #to do this, we first assume the harmonic interval is 1:1, then we can find the octave. 
+        #We can then take the floor of the octave to find the harmonic interval.
+
+        
         relative_pitches = interval_ratios - pitch_ratio
         abs_relative_pitches = [abs(diff) for diff in relative_pitches]
         closest_interval = min(abs_relative_pitches)
@@ -160,6 +166,18 @@ def calculate_interval(sung_pitch, played_pitch):
 
     return intervals[index], pitch_to_hit - sung_pitch
 
+def calculate_interval_and_octave(sung_pitch, played_pitch):
+        octave = math.floor(math.log2(sung_pitch/played_pitch)) 
+        pitch_ratio = sung_pitch / (played_pitch*(2**octave))
+        if pitch_ratio < 1:
+            relative_pitches = interval_ratios_below - pitch_ratio
+        else:
+            relative_pitches = interval_ratios - pitch_ratio
+        abs_relative_pitches = [abs(diff) for diff in relative_pitches]
+        closest_interval = min(abs_relative_pitches)
+        index = abs_relative_pitches.index(closest_interval)
+        pitch_to_hit = played_pitch*interval_ratios[index]
+        return intervals[index],pitch_to_hit - sung_pitch,octave
 
 
 # Load song from JSON
