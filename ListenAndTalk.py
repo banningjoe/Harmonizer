@@ -144,28 +144,6 @@ def play_song_thread():
         play_tone((tone * 32767).astype(np.int16), sample_rate)
         time.sleep(duration)
 
-""" def calculate_interval(sung_pitch, played_pitch): - old code
-    pitch_ratio = sung_pitch / played_pitch
-    if pitch_ratio < 1:
-        relative_pitches = interval_ratios_below - pitch_ratio
-        abs_relative_pitches = [abs(diff) for diff in relative_pitches]
-        closest_interval = min(abs_relative_pitches)
-        index = abs_relative_pitches.index(closest_interval)
-        pitch_to_hit = played_pitch*interval_ratios_below[index]
-    else:
-        #we solve for pitch_played*(2^octave) * harmonic_interval = pitch_sung
-        #to do this, we first assume the harmonic interval is 1:1, then we can find the octave. 
-        #We can then take the floor of the octave to find the harmonic interval.
-
-        
-        relative_pitches = interval_ratios - pitch_ratio
-        abs_relative_pitches = [abs(diff) for diff in relative_pitches]
-        closest_interval = min(abs_relative_pitches)
-        index = abs_relative_pitches.index(closest_interval)
-        pitch_to_hit = played_pitch*interval_ratios[index]
-
-    return intervals[index], pitch_to_hit - sung_pitch """
-
 def calculate_interval_and_octave(sung_pitch, played_pitch):
         octave = math.floor(math.log2(sung_pitch/played_pitch)) 
         pitch_ratio = sung_pitch / (played_pitch*(2**octave))
