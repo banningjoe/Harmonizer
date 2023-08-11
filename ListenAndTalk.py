@@ -118,7 +118,7 @@ def animate(i):
     line_sung.set_data(time_values, sung_tone_freqs)
     line_played.set_data(time_values, played_tone_freqs)
 
-    if sung_tone_freqs[-1] is not None and played_tone_freqs[-1] is not None:
+    if sung_tone_freqs[-1] != 0 and sung_tone_freqs[-1] is not None and played_tone_freqs[-1] is not None:
         interval, diff, octave = calculate_interval_and_octave(sung_tone_freqs[-1],played_tone_freqs[-1])
         print(interval + ", Difference of: " + str(diff) + " hz, Octave: " + str(octave))
 
@@ -144,7 +144,7 @@ def play_song_thread():
         play_tone((tone * 32767).astype(np.int16), sample_rate)
         time.sleep(duration)
 
-def calculate_interval(sung_pitch, played_pitch):
+""" def calculate_interval(sung_pitch, played_pitch): - old code
     pitch_ratio = sung_pitch / played_pitch
     if pitch_ratio < 1:
         relative_pitches = interval_ratios_below - pitch_ratio
@@ -164,7 +164,7 @@ def calculate_interval(sung_pitch, played_pitch):
         index = abs_relative_pitches.index(closest_interval)
         pitch_to_hit = played_pitch*interval_ratios[index]
 
-    return intervals[index], pitch_to_hit - sung_pitch
+    return intervals[index], pitch_to_hit - sung_pitch """
 
 def calculate_interval_and_octave(sung_pitch, played_pitch):
         octave = math.floor(math.log2(sung_pitch/played_pitch)) 
