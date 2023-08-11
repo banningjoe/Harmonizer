@@ -1,8 +1,9 @@
 import numpy as np
 import simpleaudio as sa
 import time
-
+global noteFrequencies
 noteFrequencies = {
+    "Pause": 0,
     "C": 32.703,
     "C#": 34.648,
     "D": 36.708,

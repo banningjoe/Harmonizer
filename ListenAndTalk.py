@@ -30,6 +30,9 @@ five_second_value_conversion = 0.0046 #conversion of time to some arbitrary valu
 
 amplitude_threshold = 0.00001  # Adjust this threshold as needed
 
+intervals = ["Unison","Octave","Perfect Fifth","Perfect Fourth","Major Sixth","Major Third","Minor Sixth","Minor Third","Major 2nd","Minor 7th","Major 7th","Minor 2nd", "Tritone"]
+interval_ratios = [1/1,2/1,3/2,4/3,5/3,5/4,8/5,6/5,9/8,16/9,15/8,16/15,7/5]
+
 # Initialize PyAudio
 p = pyaudio.PyAudio()
 
@@ -59,8 +62,6 @@ ax.set_ylabel('Frequency (Hz)')
 time_values = []
 played_tone_freqs = []
 sung_tone_freqs = []
-
-tone = generate_tone("E", 3, duration_ms, sample_rate)
 
 def init():
     line_played.set_data([], [])
@@ -114,6 +115,14 @@ def animate(i):
     ax.set_xlim(time_values[0], time_values[-1])
     line_sung.set_data(time_values, sung_tone_freqs)
     line_played.set_data(time_values, played_tone_freqs)
+
+    if sung_tone_freqs[-1] is not None and played_tone_freqs[-1] is not None:
+        interval, diff = calculate_interval(sung_tone_freqs[-1],played_tone_freqs[-1])
+        print(interval + ", Difference of: " + str(diff) + " hz")
+
+
+    
+
     return line_played, line_sung
 
 # Create a thread for playing the tone
@@ -135,6 +144,19 @@ def play_song_thread():
         tone = generate_tone(note, octave, duration * 1000, sample_rate)
         play_tone((tone * 32767).astype(np.int16), sample_rate)
         time.sleep(duration)
+
+def calculate_interval(sung_pitch, played_pitch):
+    pitch_ratio = sung_pitch / played_pitch
+    relative_pitches = interval_ratios - pitch_ratio
+    abs_relative_pitches = [abs(diff) for diff in relative_pitches]
+    closest_interval = min(abs_relative_pitches)
+    index = abs_relative_pitches.index(closest_interval)
+
+    pitch_to_hit = played_pitch*interval_ratios[index]
+
+    return intervals[index], pitch_to_hit - sung_pitch
+
+
 
 # Load song from JSON
 with open("song.json", "r") as json_file:
