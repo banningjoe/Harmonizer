@@ -9,6 +9,8 @@ import json
 import time
 from ToneGenerator import *
 import math
+from DetectHarmony import *
+from ResizeYAxis import *
 
 # Parameters for audio recording
 FORMAT = pyaudio.paFloat32
@@ -26,6 +28,10 @@ error_threshold = 10  # Adjust this threshold as needed
 # Create the tone array once outside of the animation
 duration_ms = 1000  # Duration of the tone in milliseconds
 sample_rate = 44100  # Standard audio sample rate
+
+Default_Size_Of_Y_Axis = 500
+DynamicSizing = False
+
 
 five_second_value_conversion = 0.0046 #conversion of time to some arbitrary value. This determines the length of the signal.
 
@@ -69,6 +75,7 @@ def init():
     line_played.set_data([], [])
     line_sung.set_data([], [])
     return line_played, line_sung
+
 # Function to update the plot with new audio data
 def animate(i):
     
@@ -118,9 +125,13 @@ def animate(i):
     line_sung.set_data(time_values, sung_tone_freqs)
     line_played.set_data(time_values, played_tone_freqs)
 
+    if sung_tone_freqs[-1] != 0 and sung_tone_freqs[-1] is not None:
+        ResizeYAxis(Default_Size_Of_Y_Axis, sung_tone_freqs[-1], ax, DynamicSizing)
+
     if sung_tone_freqs[-1] != 0 and sung_tone_freqs[-1] is not None and played_tone_freqs[-1] is not None:
         interval, diff, octave = calculate_interval_and_octave(sung_tone_freqs[-1],played_tone_freqs[-1])
-        print(interval + ", Difference of: " + str(diff) + " hz, Octave: " + str(octave))
+        semitonesFromA440 = calculate_sung_pitch(sung_tone_freqs[-1])
+        print(interval + ", Difference of: " + str(diff) + " hz, Octave: " + str(octave), "Sung Pitch: " + str(semitonesFromA440))
 
     return line_played, line_sung
 
@@ -143,19 +154,6 @@ def play_song_thread():
         tone = generate_tone(note, octave, duration * 1000, sample_rate)
         play_tone((tone * 32767).astype(np.int16), sample_rate)
         time.sleep(duration)
-
-def calculate_interval_and_octave(sung_pitch, played_pitch):
-        octave = math.floor(math.log2(sung_pitch/played_pitch)) 
-        pitch_ratio = sung_pitch / (played_pitch*(2**octave))
-        if pitch_ratio < 1:
-            relative_pitches = interval_ratios_below - pitch_ratio
-        else:
-            relative_pitches = interval_ratios - pitch_ratio
-        abs_relative_pitches = [abs(diff) for diff in relative_pitches]
-        closest_interval = min(abs_relative_pitches)
-        index = abs_relative_pitches.index(closest_interval)
-        pitch_to_hit = played_pitch*interval_ratios[index]
-        return intervals[index],pitch_to_hit - sung_pitch,octave
 
 
 # Load song from JSON
