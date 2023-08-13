@@ -11,12 +11,17 @@ from ToneGenerator import *
 import math
 from DetectHarmony import *
 from ResizeYAxis import *
+from ConvertSongToPitch import *
 
 # Parameters for audio recording
 FORMAT = pyaudio.paFloat32
 CHANNELS = 1
 RATE = 44100
 CHUNK = 1024
+
+RealSong = False
+
+
 
 # Initialize data for the rolling average
 error_window = []
@@ -71,6 +76,9 @@ time_values = []
 played_tone_freqs = []
 sung_tone_freqs = []
 
+if RealSong:
+    SongPitches = load_audio_and_extract_pitch("DTTIA_Vocals.wav",CHUNK,sample_rate)
+
 def init():
     line_played.set_data([], [])
     line_sung.set_data([], [])
@@ -107,10 +115,14 @@ def animate(i):
     else:
         sung_tone_freqs.append(None)  # Append None for no singing
     
-    if current_frequency is not None:
-        played_tone_freqs.append(current_frequency)  # Reuse the generated tone array
+    if RealSong:
+        played_tone_freqs.append(SongPitches[i])
+
     else:
-        played_tone_freqs.append(None)
+        if current_frequency is not None:
+            played_tone_freqs.append(current_frequency)  # Reuse the generated tone array
+        else:
+            played_tone_freqs.append(None)
 
     time_values.append(i / RATE)
     
